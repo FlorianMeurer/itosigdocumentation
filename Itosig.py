@@ -9,7 +9,8 @@ import olx
 import gui
 import time
 import math
-
+from PluginTools import PluginTools as PT
+import matplotlib as plt
 
 debug = bool(OV.GetParam("olex2.debug", False))
 
@@ -22,7 +23,6 @@ try:
 except:
   from_outside = True
   p_path = os.path.dirname(os.path.abspath("__file__"))
-
 
 z = open(os.sep.join([p_path, 'def.txt'])).readlines() 
 d = {}
@@ -38,8 +38,6 @@ p_img = eval(d['p_img'])
 p_scope = d['p_scope']
 
 OV.SetVar('Itosig_plugin_path', p_path)
-
-from PluginTools import PluginTools as PT
 
 class Itosig(PT):
 
@@ -59,116 +57,56 @@ class Itosig(PT):
     # END Generated =======================================
 
   def itosigvsreflins(self):
-    for line in a:
-      hkl = []
-      if line == '\n':
-        pass
-      else:
-        hkl.append(line[:2])
-        hkl.append(line[3:5])
-        hkl.append(line[6:8])
-    print(hkl)
-    print(d)
-  
-  #def showmewhatyourespliitin(function):
-    #global counter = 0
-    #global splits = []
-    
-    #def inner(*args, **kwargs):
-    
-      #nonlocal counter
-      #nonlocal splits
-      #print("Counter:", counter, "Splitting into:" splits)
-      #counter = counter +1
-      
-      #return function
-      
-  #return inner
+    pass
 
-   
-  #@showmewhatyouresplittin
-  #def split(*args, **kwargs):
-     #return split(*args, **kwargs)
-        
-  #def find_average_in_hkl(a, i):
-    #counter = 0
-    #average_of = 0
-    #for entry in HKLIS:
-      #counter = counter+1
-      #sum_of += 0 + float(HKLIS[i])
-      #average_of = sum_of/ counter
-      #print('Average of:', average_of, 'of the', i, 'entry in hkl with', counter, 'entries')
-    #return average_of
-       
-      
   
-    
   def test(self):
-    """Plots reflections occurring between certain I/sig spans"""
-    
+    """Plots various I to sigma and reflexion plots"""
+    global hkl_complete_list
+    hkl_complete_list = []
     a = open(OV.HKLSrc()).readlines()
+    
+    if a[-1].startswith("E") == True:                 # Checking if INS header is attached, and removes ins header if so
+      a = a[:len(a)-12]
+      
     cell = [float(x) for x in olx.xf.au.GetCell().split(',')]
     hkl_comp1 = hkl_complete(a, cell)
-    try:
-      self.hkl_comp1.show()
-    except:
-      print("show isnt working")
     file_2 = olex.f('fileOpen("Choose input HKL file", "HKL files|*.hkl",filepath())')
-    if file_2 is none:
+    
+    if file_2 == "":                                  # Checking if a second file is loaded and proceeding with formatting
       pass
     else:
-      hkl_comp2 = hkl_complete(file_2, cell)            #For now, the compare file uses the EXACT same cell paramenters as the first file
-
-    b = a[:5]
-    hkl = []
-    sum_I = 0
-    sum_sig = 0
-    avg_I = 0
-    avg_sig = 0
-    avg_itosig = 0
-    counter = 0
-    max_I = []
-    max_sig =[]
-    
-    
-    
-    #for i in range(len(b)):
-      #c = []
-      #c = b[i][:4].split() + b[i][5:9].split() + b[i][9:12].split() + b[i][12:21].split() + b[i][21:31].split()
-      #hkl.append(c)
+      b = open(file_2).readlines()
+      if b[-1].startswith("E") == True:               # Checking if INS header is attached, and removes ins header if so
+        b = b[:len(b)-12]      
+      hkl_comp2 = hkl_complete(b, cell)               # For now, the compare file uses the EXACT same cell paramenters as the first file
       
-    #for entry in hkl:
-      #counter = counter+1
-      #sum_I = sum_I+float(entry[3])
-      #sum_sig = sum_sig+float(entry[4])
-      #entry.append(str(float(entry[3])/float(entry[4])))
-    
-    #max_I = max_value(hkl, 3)
-    #max_sig = max_value(hkl,4)
-    #max_itosig = max_value(hkl,5)
-    #avg_I = sum_I / counter
-    #avg_sig = sum_sig / counter
-    #avg_itosig = avg_I / avg_sig    
-    
-    #print('counter:', counter)
-    #print('Average Intensity:', avg_I, '\n Average sigma:', avg_sig, '\n Average Itosig:', avg_itosig)
-    #print('Max Values: I:', max_I, 'sig:', max_sig, 'I/sig:', max_itosig)
+    for elem in hkl_complete_list:                    # generates a list of sorted d_spacings (lowest to highest)
+      zet = ret_entrylist_of_listoflists(elem.hkl_comp, 6)
+      sor_zet=[sorted(zet)]
+      print(sor_zet)
       
-    
+def ret_entrylist_of_listoflists(listoflists, i):
+    """Input: list of lists, output: list of entries i of sublist"""
+    ret = []
+    for elem in listoflists:
+      ret.append(float(elem[i]))
+    return ret      
       
 def max_value(inplist, i):
-  """returns the max value of a list"""
-  return max([sublist[i] for sublist in inplist])   
+  """returns the max value of the i entry of a list"""
+  return max([sublist[i] for sublist in inplist])  
+
+def min_value(inplist, i):
+  """returns the min value of the i entry of a list"""
+  return min([sublist[i] for sublist in inplist])
 
 def avg_list(inplist, i):
-  """return the lists entrys average"""
+  """return the lists i entrys average"""
   counter = 0
   for sublist in inplist:
     counter += 1 
   return (sum(float(sublist[i]) for sublist in inplist))/counter
-
-    
-
 
 def calc_d_spacing(h, k, l, cell, Raumgruppe):
   """Calculated the respective d spacing. Params: h, k, l, cellparams, spacegroup"""
@@ -258,21 +196,22 @@ def gen_hkl_comp(inp, cell):
       SG = "monoclinic"
     else:
       SG = "triklinic"
-    ret = []  
+    ret = []
     for i in range(len(b)-1):
       if b[i][0] != "0" and b[i][1] != "0" and b[i][2] != "0" and b[i][3] != "0.00" and b[i][4] != "0.00" and b[i][5] != "0.00":
         c = []
-        c = b[i][:4].split() + b[i][5:9].split() + b[i][9:12].split() + b[i][12:21].split() + b[i][21:31].split()
+        c = b[i][:4].split() + b[i][5:9].split() + b[i][9:12].split() + b[i][12:21].split() + b[i][21:30].split()
         
         c.append(float(b[i][12:21].split()[0]) / float(b[i][21:31].split()[0]))
         c.append(calc_d_spacing(float(c[0]), float(c[1]), float(c[2]), cell, SG))
         ret.append(c)             
       else: 
-        break        
+        continue       
     return ret   
 
+  
 
-hkl_complete_list = []
+      
 
 class hkl_complete:
        
@@ -285,13 +224,14 @@ class hkl_complete:
       self.max_sig = max_value(self.hkl_comp, 4)
       self.max_itosig = max_value(self.hkl_comp, 5)
       self.calc_itosig = avg_list(self.hkl_comp, 6)
-      hkl_complete_list.append(self.hkl_comp)
-     
+      hkl_complete_list.append(self)
     
     
-    def intensity_plot(self):
-      
-      pass
+    def reflIns_vs_dspacing_plot(self):
+      uns = []
+      uns.append(ret_entrylist_of_listoflists(self.hkl_comp[6]))
+      print(uns)
+      return
       
 
 Itosig_instance = Itosig()
