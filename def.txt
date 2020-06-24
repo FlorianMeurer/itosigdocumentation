@@ -1,0 +1,5 @@
+
+  p_name = Itosig
+  p_htm = Itosig
+  p_img = [("Itosig",'h1'), ("Itosig-Extras",'h3')]
+  p_scope = itosig
