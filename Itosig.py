@@ -69,10 +69,10 @@ class Itosig(PT):
     a = open(OV.HKLSrc()).readlines()
     cell = [float(x) for x in olx.xf.au.GetCell().split(',')]
     
-    if a[-1].startswith("E") == True :                 # Checking if INS header is attached, and removes ins header if so
+    if a[-1].startswith("E"):                 # Checking if INS header is attached, and removes ins header if so
       print("Ejecting INS header: last 16 lines")
       a = a[:len(a)-16]
-    if a[-1].startswith("_") == True:
+    if a[-1].startswith("_"):
       print("Ejecting INS header: last 18 lines")
       a = a[:len(a)-18]    
     else:
@@ -84,9 +84,9 @@ class Itosig(PT):
       pass
     else:
       b = open(file_2).readlines()
-      if b[-1].startswith("E") == True:               # Checking if INS header is attached, and removes ins header if so
+      if b[-1].startswith("E"):                       # Checking if INS header is attached, and removes ins header if so
         b = b[:len(b)-16]
-      if b[-1].startswith("_") == True:
+      if b[-1].startswith("_"):
         b = b[:len(b)-18]
       else:
         b = b[:len(b)-1]       
@@ -98,7 +98,7 @@ class Itosig(PT):
     max_itosigs =  []
     nr_reflins = []
     for elem in hkl_complete_list:                    # generates a list of sorted d_spacings (lowest to highest)
-      print(elem.hkl_comp)
+      #print(elem.hkl_comp)
       zet = ret_entrylist_of_listoflists(elem.hkl_comp, 6)
       sor_zet=[sorted(zet)]
       sorted_inv_dspacings.append(sor_zet)
@@ -108,10 +108,11 @@ class Itosig(PT):
       max_itosigs.append(max_value(elem.hkl_comp, 5))
       nr_reflins.append(elem.max_values()[-1])
       print("Max Int, Max Sigma, Max I/sig, Avg_I/sig, total number of Reflexions used:", elem.max_values())
-
+      
     try:
-      plotting_everything(sorted_inv_dspacings, sorted_Itosig, 30, max(max_itosigs), nr_reflins)
+      plotting_everything(sorted_inv_dspacings, sorted_Itosig, 30, max(max_itosigs))
     except:
+      print("error during plotting")
       pass
             
 def ret_entrylist_of_listoflists(listoflists, i):                       # help_funcs for further processing of the lists
@@ -231,7 +232,7 @@ def gen_hkl_comp(inp, cell):
     for i in range(len(b)-1):
       if b[i][0] != "0" and b[i][1] != "0" and b[i][2] != "0" and b[i][3] != "0.00" and b[i][4] != "0.00" and b[i][5] != "0.00":
           c = []
-          c = b[i][:4].split() + b[i][5:9].split() + b[i][9:13].split() + b[i][12:21].split() + b[i][21:29].split()
+          c = b[i][:4].split() + b[i][5:9].split() + b[i][9:12].split() + b[i][12:21].split() + b[i][21:29].split()
           c.append(float(b[i][12:21].split()[0]) / float(b[i][21:31].split()[0]))
           c.append(1/(calc_d_spacing(float(c[0]), float(c[1]), float(c[2]), cell, SG)))
           ret.append(c)
@@ -240,36 +241,38 @@ def gen_hkl_comp(inp, cell):
         continue       
     return [ret, counter]   
 
-def plotting_everything(reflins_inv_dspac, itosig, bins, maxItosig, nrs):
+def plotting_everything(reflins_inv_dspac, itosig, bins, maxItosig):
   """Takes sorted lists of dspacing and I/sig values and creates plots of both vs numbers of reflexions"""
+  print("plotting initialized")
   fig = ms(rows = 2, cols = 2, subplot_titles=("d-spacing VS number of reflins", "Itosig vs Number of reflins", "Test3", "Test4"))
   count = 0
   
-  for x in reflins_inv_dspac:
+  for x in itosig:
     if count == 0:
-      name ="Alpha"
+      name ="Alpha"  
     else:
       name = "Beta"
-    y = np.arange(len(x[0]))
-    fig.add_trace(go.Scatter(x=x[0], y=y, name = name), row=1, col=1)
+    rejections = 0
+    for i in range(len(x[0])):
+      if x[0][i] <= 0:
+        rejections += 1
+      elif math.log10(x[0][i]) < 0.0001:
+        rejections += 1
+      else:
+        x[0][i] = math.log10(x[0][i])
+    x[0] = x[0][rejections:]
+    print('While plotting,', rejections, "reflexions have ben rejected due to very low I/sig (< 0.1) for the", name, "dataset")
+    fig.add_trace(go.Histogram(x=x[0], name=name, xbins=dict(start=0, end=math.log10(maxItosig), size=math.log10(maxItosig)/bins)), row = 1, col = 2)
     count+=1
   
-  count = 0 
-  for elem in itosig:
-    for x in reflins_inv_dspac:
-      if count == 0:
+  count = 0  
+  for x in reflins_inv_dspac:
+    if count == 0:
         name ="Alpha"
-      else:
+    else:
         name = "Beta"
-    rejections = 0
-    for i in range(len(elem[0])):
-      if elem[0][i] > 0.1:
-        elem[0][i] = math.log10(elem[0][i])
-      else:
-        rejections += 1
-    print('While plotting,', rejections, "reflexions have ben rejected due to very low I/sig (< 0.1) for the", name, "dataset")
-        
-    fig.add_trace(go.Histogram(x=elem[0], name = name, xbins= dict(start = 0, end = math.log10(maxItosig), size = math.log10(maxItosig)/bins)), row = 1, col = 2)
+    y = np.arange(len(x[0]))
+    fig.add_trace(go.Scatter(x=x[0], y=y, name = name), row=1, col=1)   
     count+=1
     
   fig.update_xaxes(title_text = "1/dspacing", row=1, col=1)
@@ -277,11 +280,7 @@ def plotting_everything(reflins_inv_dspac, itosig, bins, maxItosig, nrs):
   fig.update_xaxes(title_text = "binned log(I/sig)", row=1, col=2)
   fig.update_yaxes(title_text = "Number of reflexions", row=1, col=2)
   fig.update_layout(height=1500, width=2000)
-  
-  try:
-    fig.show()
-  except:
-    print("plotting not successfull")
+  fig.show()
 
 class hkl_complete:
        
